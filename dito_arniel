@@ -497,6 +497,7 @@ sudo service stunnel4 restart
 }
 
 
+
 install_hysteria(){
 clear
 echo 'Installing hysteria.'
@@ -576,7 +577,6 @@ service stunnel4 restart
 systemctl restart openvpn@server.service
 systemctl restart openvpn@server2.service
 systemctl restart hysteria-server.service
-screen -dmS socks python /etc/socks.py 8060
 ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /usr/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 10 --client-socket-sndbuf 10000
 screen -dmS webinfo php -S 0.0.0.0:5623 -t /root/.web/
 bash /etc/.monitor openvpn
@@ -613,6 +613,7 @@ sudo crontab -l | { echo "* * * * * pgrep -x stunnel4 >/dev/null && echo 'GOOD' 
 * * * * * /bin/bash /etc/.ws >/dev/null 2>&1
 * * * * * /bin/bash /etc/.hysteria >/dev/null 2>&1
 * * * * * /bin/bash /etc/.monitor openvpn >/dev/null 2>&1"; } | crontab -
+screen -dmS socks python /etc/socks.py 8060
 sudo systemctl restart cron
 } &>/dev/null
 clear
