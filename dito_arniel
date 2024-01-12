@@ -8,7 +8,7 @@ PORT_TCP='110';
 PORT_UDP='53';
 PORT_SSL='443';
 HYSTERIA_TYPE='default';
-timedatectl set-timezone Asia/Riyadh
+timedatectl set-timezone Asia/Manila
 install_require () {
 clear
 echo 'Installing dependencies.'
@@ -67,7 +67,7 @@ echo "deb http://ftp.debian.org/debian/ jessie main contrib non-free
     squid -z
     cd /etc/squid/
     rm squid.conf
-    echo "acl Firenet dst `curl -s https://api.ipify.org`" >> squid.conf
+    echo "acl YModified dst `curl -s https://api.ipify.org`" >> squid.conf
     echo 'http_port 8080
 http_port 8181
 visible_hostname Proxy
@@ -76,22 +76,23 @@ acl HEAD method HEAD
 acl POST method POST
 acl GET method GET
 acl CONNECT method CONNECT
-http_access allow Firenet
+http_access allow YModified
 http_reply_access allow all
 http_access deny all
 icp_access allow all
 always_direct allow all
-visible_hostname Firenet-Proxy
+visible_hostname YModified-Proxy
 error_directory /usr/share/squid/errors/English' >> squid.conf
     cd /usr/share/squid/errors/English
     rm ERR_INVALID_URL
-    echo '<!--FirenetDev--><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">ðŸ˜ %w ðŸ˜</p></div></div></body></html>' >> ERR_INVALID_URL
+    echo '<!--YModifiedDev--><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">ðŸ˜ %w ðŸ˜</p></div></div></body></html>' >> ERR_INVALID_URL
     chmod 755 *
     /etc/init.d/squid start
 cd /etc || exit
-wget 'https://raw.githubusercontent.com/Dexter-Hysteria/online/server_script/socks.py' -O /etc/socks.py
+wget 'https://raw.githubusercontent.com/Dexter-Hysteria/online/server_script/inter_service/socks.py' -O /etc/socks.py
 dos2unix /etc/socks.py
 chmod +x /etc/socks.py
+
 wget 'https://raw.githubusercontent.com/Dexter-Hysteria/online/server_script/inter_service/file/monitor' -O /etc/.monitor
 wget 'https://raw.githubusercontent.com/Dexter-Hysteria/online/server_script/inter_service/file/ws' -O /etc/.ws
 wget 'https://raw.githubusercontent.com/Dexter-Hysteria/online/server_script/inter_service/file/hysteria' -O /etc/.hysteria
@@ -118,7 +119,7 @@ touch /etc/openvpn/server2.conf
 echo 'DNS=1.1.1.1
 DNSStubListener=no' >> /etc/systemd/resolved.conf
 
-echo '#Openvpn Configuration by Firenet Developer :)
+echo '#Openvpn Configuration by YModified Developer :)
 dev tun
 port PORT_UDP
 proto udp
@@ -162,7 +163,7 @@ verb 3' > /etc/openvpn/server.conf
 
 sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server.conf
 
-echo '#Openvpn Configuration by Firenet Developer :)
+echo '#Openvpn Configuration by YModified Developer :)
 dev tun
 port PORT_TCP
 proto tcp
@@ -265,6 +266,251 @@ mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE users SET is_connected='0', ac
 LENZ06
 
 sed -i "s|SERVER_IP|$server_ip|g" /etc/openvpn/login/disconnect.sh
+
+cat << \socksocserv > /usr/local/sbin/proxy.py
+#!/usr/bin/env python3
+# encoding: utf-8
+# SocksProxy Mod By: Michaele Abalos
+import socket, threading, thread, select, signal, sys, time
+from os import system
+system("clear")
+#conexao
+IP = '0.0.0.0'
+try:
+   PORT = int(sys.argv[1])
+except:
+   PORT = 8060
+PASS = ''
+BUFLEN = 8196 * 8
+TIMEOUT = 60
+MSG = 'Powered by: Michaele Abalos'
+DEFAULT_HOST = '0.0.0.0:110'
+RESPONSE = "HTTP/1.1 200 " + str(MSG) + "\r\n\r\n"
+
+class Server(threading.Thread):
+    def __init__(self, host, port):
+        threading.Thread.__init__(self)
+        self.running = False
+        self.host = host
+        self.port = port
+        self.threads = []
+	self.threadsLock = threading.Lock()
+	self.logLock = threading.Lock()
+
+    def run(self):
+        self.soc = socket.socket(socket.AF_INET)
+        self.soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.soc.settimeout(2)
+        self.soc.bind((self.host, self.port))
+        self.soc.listen(0)
+        self.running = True
+
+        try:                    
+            while self.running:
+                try:
+                    c, addr = self.soc.accept()
+                    c.setblocking(1)
+                except socket.timeout:
+                    continue
+                
+                conn = ConnectionHandler(c, self, addr)
+                conn.start();
+                self.addConn(conn)
+        finally:
+            self.running = False
+            self.soc.close()
+            
+    def printLog(self, log):
+        self.logLock.acquire()
+        print log
+        self.logLock.release()
+	
+    def addConn(self, conn):
+        try:
+            self.threadsLock.acquire()
+            if self.running:
+                self.threads.append(conn)
+        finally:
+            self.threadsLock.release()
+                    
+    def removeConn(self, conn):
+        try:
+            self.threadsLock.acquire()
+            self.threads.remove(conn)
+        finally:
+            self.threadsLock.release()
+                
+    def close(self):
+        try:
+            self.running = False
+            self.threadsLock.acquire()
+            
+            threads = list(self.threads)
+            for c in threads:
+                c.close()
+        finally:
+            self.threadsLock.release()
+			
+
+class ConnectionHandler(threading.Thread):
+    def __init__(self, socClient, server, addr):
+        threading.Thread.__init__(self)
+        self.clientClosed = False
+        self.targetClosed = True
+        self.client = socClient
+        self.client_buffer = ''
+        self.server = server
+        self.log = 'Conexao: ' + str(addr)
+
+    def close(self):
+        try:
+            if not self.clientClosed:
+                self.client.shutdown(socket.SHUT_RDWR)
+                self.client.close()
+        except:
+            pass
+        finally:
+            self.clientClosed = True
+            
+        try:
+            if not self.targetClosed:
+                self.target.shutdown(socket.SHUT_RDWR)
+                self.target.close()
+        except:
+            pass
+        finally:
+            self.targetClosed = True
+
+    def run(self):
+        try:
+            self.client_buffer = self.client.recv(BUFLEN)
+        
+            hostPort = self.findHeader(self.client_buffer, 'X-Real-Host')
+            
+            if hostPort == '':
+                hostPort = DEFAULT_HOST
+
+            split = self.findHeader(self.client_buffer, 'X-Split')
+
+            if split != '':
+                self.client.recv(BUFLEN)
+            
+            if hostPort != '':
+                passwd = self.findHeader(self.client_buffer, 'X-Pass')
+				
+                if len(PASS) != 0 and passwd == PASS:
+                    self.method_CONNECT(hostPort)
+                elif len(PASS) != 0 and passwd != PASS:
+                    self.client.send('HTTP/1.1 400 WrongPass!\r\n\r\n')
+                if hostPort.startswith(IP):
+                    self.method_CONNECT(hostPort)
+                else:
+                   self.client.send('HTTP/1.1 403 Forbidden!\r\n\r\n')
+            else:
+                print '- No X-Real-Host!'
+                self.client.send('HTTP/1.1 400 NoXRealHost!\r\n\r\n')
+
+        except Exception as e:
+            self.log += ' - error: ' + e.strerror
+            self.server.printLog(self.log)
+	    pass
+        finally:
+            self.close()
+            self.server.removeConn(self)
+
+    def findHeader(self, head, header):
+        aux = head.find(header + ': ')
+    
+        if aux == -1:
+            return ''
+
+        aux = head.find(':', aux)
+        head = head[aux+2:]
+        aux = head.find('\r\n')
+
+        if aux == -1:
+            return ''
+
+        return head[:aux];
+
+    def connect_target(self, host):
+        i = host.find(':')
+        if i != -1:
+            port = int(host[i+1:])
+            host = host[:i]
+        else:
+            if self.method=='CONNECT':
+                port = 110
+            else:
+                port = 22
+
+        (soc_family, soc_type, proto, _, address) = socket.getaddrinfo(host, port)[0]
+
+        self.target = socket.socket(soc_family, soc_type, proto)
+        self.targetClosed = False
+        self.target.connect(address)
+
+    def method_CONNECT(self, path):
+    	self.log += ' - CONNECT ' + path
+        self.connect_target(path)
+        self.client.sendall(RESPONSE)
+        self.client_buffer = ''
+        self.server.printLog(self.log)
+        self.doCONNECT()
+                    
+    def doCONNECT(self):
+        socs = [self.client, self.target]
+        count = 0
+        error = False
+        while True:
+            count += 1
+            (recv, _, err) = select.select(socs, [], socs, 3)
+            if err:
+                error = True
+            if recv:
+                for in_ in recv:
+		    try:
+                        data = in_.recv(BUFLEN)
+                        if data:
+			    if in_ is self.target:
+				self.client.send(data)
+                            else:
+                                while data:
+                                    byte = self.target.send(data)
+                                    data = data[byte:]
+
+                            count = 0
+			else:
+			    break
+		    except:
+                        error = True
+                        break
+            if count == TIMEOUT:
+                error = True
+
+            if error:
+                break
+
+
+
+def main(host=IP, port=PORT):
+    print "\033[0;34mâ”"*8,"\033[1;32m PROXY SOCKS","\033[0;34mâ”"*8,"\n"
+    print "\033[1;33mIP:\033[1;32m " + IP
+    print "\033[1;33mPORTA:\033[1;32m " + str(PORT) + "\n"
+    print "\033[0;34mâ”"*10,"\033[1;32m Michaele Abalos","\033[0;34mâ”\033[1;37m"*11,"\n"
+    server = Server(IP, PORT)
+    server.start()
+    while True:
+        try:
+            time.sleep(2)
+        except KeyboardInterrupt:
+            print '\nClosing...'
+            server.close()
+            break
+if __name__ == '__main__':
+    main()
+socksocserv
+
 
 cat << EOF > /etc/openvpn/easy-rsa/keys/ca.crt
 -----BEGIN CERTIFICATE-----
@@ -587,7 +833,7 @@ exit 0' >> /etc/rc.local
     sudo systemctl start firenet.service
     
     mkdir -m 777 /root/.web
-echo "Made with love by: Firenet Developer... " >> /root/.web/index.php
+echo "Made with love by: YModified Developer... " >> /root/.web/index.php
 
 echo "tcp_port=TCP_PORT
 udp_port=UDP_PORT
@@ -608,12 +854,36 @@ start_service () {
 clear
 echo 'Starting..'
 {
+cat <<\EOM >/root/auto
+#!/bin/bash
+
+if nc -z localhost 8060; then
+    echo "Squid Proxy Running"
+else
+    echo "Starting Port 8060"
+    screen -dmS proxy python /usr/local/sbin/proxy.py 8060
+fi
+
+
+if nc -z localhost 80; then
+    echo "Squid Proxy Running"
+else
+    echo "Starting Port 80"
+    screen -dmS socks python /etc/socks.py 80
+fi
+
+sudo sync; echo 3 > /proc/sys/vm/drop_caches
+swapoff -a && swapon -a
+echo "Ram Cleaned!"
+EOM
+
+bash /root/auto
 
 sudo crontab -l | { echo "* * * * * pgrep -x stunnel4 >/dev/null && echo 'GOOD' || /etc/init.d/stunnel4 restart
+* * * * * /bin/bash /root/auto >/dev/null 2>&1
 * * * * * /bin/bash /etc/.ws >/dev/null 2>&1
 * * * * * /bin/bash /etc/.hysteria >/dev/null 2>&1
 * * * * * /bin/bash /etc/.monitor openvpn >/dev/null 2>&1"; } | crontab -
-screen -dmS socks python /etc/socks.py 8060
 sudo systemctl restart cron
 } &>/dev/null
 clear
@@ -623,9 +893,6 @@ echo '+++++++++++************+++++++++++'
 echo -e "[IP] : $server_ip\n[Openvpn TCP Port] : $PORT_TCP\n[Openvpn UDP Port] : $PORT_UDP\n[Ssl Port] : $PORT_SSL\n[Proxy Socks ] : 8060\n[Hysteria Port ] : 5666\n[Proxy Squid 1] : 8080\n[Proxy Squid 2] : 3128\n"
 history -c;
 rm /usr/local/etc/.system
-echo 'Server will secure this server and reboot after 20 seconds'
-sleep 20
-reboot
 }
 
 server_ip=$(curl -s https://api.ipify.org)
